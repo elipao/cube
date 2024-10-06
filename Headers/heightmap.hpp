@@ -65,12 +65,21 @@ public:
 	{
 		// You must:
 		// -  active proper texture unit before binding
-		// -  bind the texture
-		// -  draw mesh (using GL_TRIANGLES is the most reliable way)
-		
-		
-		
-		
+		glActiveTexture(GL_TEXTURE0);
+        // Bind the texture
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		// Use the shader program
+		shader.use();
+		// Bind the VAO
+		glBindVertexArray(VAO);
+		// Draw the heightmap
+		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
+		// always good practice to set everything back to defaults once configured.
+		glBindVertexArray(0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glActiveTexture(GL_TEXTURE0);
+
 		// always good practice to set everything back to defaults once configured.
 		glActiveTexture(GL_TEXTURE0);
 	}
@@ -95,38 +104,57 @@ private:
 	}
 
 
-	// Make Vertex:  take x and y position return a new vertex for that position which includes 
-	//  the position and the texture coordinates
-	/*
 	Vertex make_vertex(int x, int y)
 	{
 		Vertex v;
-		//XYZ coords
-		v.Position.x =
-		v.Position.y = 
-		v.Position.z = 
+		// XYZ coords
+		v.Position.x = (float)x;
+		v.Position.y = (float)(*(data + y * width + x)) / 255.0f; // height from heightmap
+		v.Position.z = (float)y;
 
-		//Texture Coords
-		v.TexCoords.x =
-		v.TexCoords.y =
+		// Texture Coords
+		v.TexCoords.x = (float)x / (float)(width - 1);
+		v.TexCoords.y = (float)y / (float)(height - 1);
 
 		return v;
 	}
-	*/
+	
 
 	// convert heightmap to floats, set position and texture vertices using the subfunction make_vertex
 	void create_heightmap()
 	{
-		
-
-
+		for (int y = 0; y < height; y++)
+		{
+			for (int x = 0; x < width; x++)
+			{
+				vertices.push_back(make_vertex(x, y));
+			}
+		}
 	}
 
 
 	// create the indicies array for the EBO (so what indicies correspond with triangles to for rendering)
 	void create_indices()
 	{
+		for (int y = 0; y < height - 1; y++)
+		{
+			for (int x = 0; x < width - 1; x++)
+			{
+				unsigned int topLeft = y * width + x;
+				unsigned int topRight = topLeft + 1;
+				unsigned int bottomLeft = (y + 1) * width + x;
+				unsigned int bottomRight = bottomLeft + 1;
 
+				// Two triangles per square
+				indices.push_back(topLeft);
+				indices.push_back(bottomLeft);
+				indices.push_back(topRight);
+
+				indices.push_back(topRight);
+				indices.push_back(bottomLeft);
+				indices.push_back(bottomRight);
+			}
+		}
 
 
 	}
@@ -139,7 +167,30 @@ private:
 	void setup_heightmap()
 	{
 
+		// Generate and bind the VAO
+		glGenVertexArrays(1, &VAO);
+		glBindVertexArray(VAO);
 
+		// Generate and bind the VBO
+		glGenBuffers(1, &VBO);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);
+
+		// Generate and bind the EBO
+		glGenBuffers(1, &EBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+
+		// Set vertex attributes
+		// Position
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+		glEnableVertexAttribArray(0);
+		// TexCoords
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, TexCoords)));
+		glEnableVertexAttribArray(1);
+
+		// Unbind the VAO
+		glBindVertexArray(0);
 		
 
 	}
